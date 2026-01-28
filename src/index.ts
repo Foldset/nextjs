@@ -1,2 +1,2 @@
-export { createFoldsetMiddleware } from "./middleware";
-export type { FoldsetMiddlewareOptions } from "./types";
+export { createFoldsetProxy } from "./proxy";
+export type { FoldsetProxyOptions } from "./types";

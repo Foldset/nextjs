@@ -6,14 +6,14 @@ import {
   handleWebhookRequest,
 } from "@foldset/core";
 
-import type { FoldsetMiddlewareOptions } from "./types";
+import type { FoldsetProxyOptions } from "./types";
 import { getWorkerCore } from "./core";
-import { MiddlewareAdapter } from "./adapter";
+import { ProxyAdapter } from "./adapter";
 
-export function createFoldsetMiddleware(options: FoldsetMiddlewareOptions) {
-  return async function middleware(request: NextRequest) {
+export function createFoldsetProxy(options: FoldsetProxyOptions) {
+  return async function proxy(request: NextRequest) {
     const core = await getWorkerCore(options.apiKey);
-    const adapter = new MiddlewareAdapter(request);
+    const adapter = new ProxyAdapter(request);
 
     if (request.method === "POST" && request.nextUrl.pathname === "/foldset/webhooks") {
       try {

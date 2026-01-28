@@ -1,7 +1,7 @@
 import type { RequestAdapter } from "@foldset/core";
 import type { NextRequest } from "next/server";
 
-export class MiddlewareAdapter implements RequestAdapter {
+export class ProxyAdapter implements RequestAdapter {
   constructor(private request: NextRequest) { }
 
   getIpAddress(): string | null {

@@ -1,3 +1,3 @@
-export interface FoldsetMiddlewareOptions {
+export interface FoldsetProxyOptions {
   apiKey: string;
 }
