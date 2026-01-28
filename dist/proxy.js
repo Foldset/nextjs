@@ -3,6 +3,12 @@ import { handlePaymentRequest, handleSettlement, handleWebhookRequest, } from "@
 import { getWorkerCore } from "./core";
 import { ProxyAdapter } from "./adapter";
 export function createFoldsetProxy(options) {
+    if (!options.apiKey) {
+        console.warn("No API key provided to Foldset proxy");
+        return async function proxy(request) {
+            return NextResponse.next();
+        };
+    }
     return async function proxy(request) {
         const core = await getWorkerCore(options.apiKey);
         const adapter = new ProxyAdapter(request);
