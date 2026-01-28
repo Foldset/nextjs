@@ -13,7 +13,8 @@ export function createFoldsetProxy(options) {
     }
     return async function proxy(request) {
         // Skip proxy on upstream fetch to prevent infinite loop
-        if (request.headers.get(BYPASS_HEADER)) {
+        // Use API key as value so external requests can't spoof the bypass
+        if (request.headers.get(BYPASS_HEADER) === options.apiKey) {
             return NextResponse.next();
         }
         const core = await getWorkerCore(options.apiKey);
@@ -44,7 +45,7 @@ export function createFoldsetProxy(options) {
                     });
                 case "payment-verified": {
                     const upstreamHeaders = new Headers(request.headers);
-                    upstreamHeaders.set(BYPASS_HEADER, "1");
+                    upstreamHeaders.set(BYPASS_HEADER, options.apiKey);
                     const upstream = await fetch(request.url, {
                         method: request.method,
                         headers: upstreamHeaders,
