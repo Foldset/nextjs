@@ -12,7 +12,11 @@ export async function fetchRedisCredentials(apiKey) {
     return data;
 }
 export function createRedisStore(credentials) {
-    const redis = new Redis({ url: credentials.url, token: credentials.token });
+    const redis = new Redis({
+        url: credentials.url,
+        token: credentials.token,
+        automaticDeserialization: false,
+    });
     const prefix = credentials.tenantId;
     return {
         async get(key) {

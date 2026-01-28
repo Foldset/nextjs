@@ -29,7 +29,11 @@ export async function fetchRedisCredentials(
 }
 
 export function createRedisStore(credentials: RedisCredentials): ConfigStore {
-  const redis = new Redis({ url: credentials.url, token: credentials.token });
+  const redis = new Redis({
+    url: credentials.url,
+    token: credentials.token,
+    automaticDeserialization: false,
+  });
   const prefix = credentials.tenantId;
 
   return {

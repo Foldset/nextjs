@@ -11,6 +11,7 @@ import { getWorkerCore } from "./core";
 import { ProxyAdapter } from "./adapter";
 
 export function createFoldsetProxy(options: FoldsetProxyOptions) {
+  // TODO rfradkin: This might cause bugs check if the api key can switch.
   if (!options.apiKey) {
     console.warn("No API key provided to Foldset proxy");
     return async function proxy(request: NextRequest) {
