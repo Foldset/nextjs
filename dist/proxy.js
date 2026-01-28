@@ -41,6 +41,7 @@ export function createFoldsetProxy(options) {
                     // upstream response status. This avoids a fetch loop (middleware
                     // fetching its own URL) and allows us to use NextResponse.next().
                     // Trade-off: If upstream returns an error, the payment is already settled.
+                    // TODO rfradkin: This is a bit of a hack, figure out a workaround
                     const settlement = await handleSettlement(core, httpServer, adapter, result.paymentPayload, result.paymentRequirements, 200);
                     if (!settlement.success) {
                         return NextResponse.json({
