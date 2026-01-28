@@ -10,6 +10,8 @@ import type { FoldsetProxyOptions } from "./types";
 import { getWorkerCore } from "./core";
 import { ProxyAdapter } from "./adapter";
 
+const BYPASS_HEADER = "x-foldset-bypass";
+
 export function createFoldsetProxy(options: FoldsetProxyOptions) {
   // TODO rfradkin: This might cause bugs check if the api key can switch.
   if (!options.apiKey) {
@@ -19,6 +21,11 @@ export function createFoldsetProxy(options: FoldsetProxyOptions) {
     };
   }
   return async function proxy(request: NextRequest) {
+    // Skip proxy on upstream fetch to prevent infinite loop
+    if (request.headers.get(BYPASS_HEADER)) {
+      return NextResponse.next();
+    }
+
     const core = await getWorkerCore(options.apiKey);
     const adapter = new ProxyAdapter(request);
 
@@ -58,9 +65,11 @@ export function createFoldsetProxy(options: FoldsetProxyOptions) {
           });
 
         case "payment-verified": {
+          const upstreamHeaders = new Headers(request.headers);
+          upstreamHeaders.set(BYPASS_HEADER, "1");
           const upstream = await fetch(request.url, {
             method: request.method,
-            headers: request.headers,
+            headers: upstreamHeaders,
             body: request.body,
           });
 

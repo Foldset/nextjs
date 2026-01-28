@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handlePaymentRequest, handleSettlement, handleWebhookRequest, } from "@foldset/core";
 import { getWorkerCore } from "./core";
 import { ProxyAdapter } from "./adapter";
+const BYPASS_HEADER = "x-foldset-bypass";
 export function createFoldsetProxy(options) {
     // TODO rfradkin: This might cause bugs check if the api key can switch.
     if (!options.apiKey) {
@@ -11,6 +12,10 @@ export function createFoldsetProxy(options) {
         };
     }
     return async function proxy(request) {
+        // Skip proxy on upstream fetch to prevent infinite loop
+        if (request.headers.get(BYPASS_HEADER)) {
+            return NextResponse.next();
+        }
         const core = await getWorkerCore(options.apiKey);
         const adapter = new ProxyAdapter(request);
         if (request.method === "POST" && request.nextUrl.pathname === "/foldset/webhooks") {
@@ -38,9 +43,11 @@ export function createFoldsetProxy(options) {
                         headers: result.response.headers,
                     });
                 case "payment-verified": {
+                    const upstreamHeaders = new Headers(request.headers);
+                    upstreamHeaders.set(BYPASS_HEADER, "1");
                     const upstream = await fetch(request.url, {
                         method: request.method,
-                        headers: request.headers,
+                        headers: upstreamHeaders,
                         body: request.body,
                     });
                     const settlement = await handleSettlement(core, httpServer, adapter, result.paymentPayload, result.paymentRequirements, upstream.status);
