@@ -1,7 +1,7 @@
 import type { RequestAdapter } from "@foldset/core";
 import type { NextRequest } from "next/server";
 
-export class ProxyAdapter implements RequestAdapter {
+export class NextjsAdapter implements RequestAdapter {
   constructor(private request: NextRequest) { }
 
   getIpAddress(): string | null {
@@ -25,6 +25,10 @@ export class ProxyAdapter implements RequestAdapter {
 
   getUrl(): string {
     return this.request.url;
+  }
+
+  getHost(): string {
+    return this.request.nextUrl.hostname;
   }
 
   getAcceptHeader(): string {

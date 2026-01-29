@@ -8,7 +8,7 @@ import {
 
 import type { FoldsetProxyOptions } from "./types";
 import { getWorkerCore } from "./core";
-import { ProxyAdapter } from "./adapter";
+import { NextjsAdapter } from "./adapter";
 
 const BYPASS_HEADER = "x-foldset-bypass";
 
@@ -28,7 +28,7 @@ export function createFoldsetProxy(options: FoldsetProxyOptions) {
     }
 
     const core = await getWorkerCore(options.apiKey);
-    const adapter = new ProxyAdapter(request);
+    const adapter = new NextjsAdapter(request);
 
     if (request.method === "POST" && request.nextUrl.pathname === "/foldset/webhooks") {
       try {

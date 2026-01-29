@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
 import { handlePaymentRequest, handleSettlement, handleWebhookRequest, } from "@foldset/core";
 import { getWorkerCore } from "./core";
-import { ProxyAdapter } from "./adapter";
+import { NextjsAdapter } from "./adapter";
+const BYPASS_HEADER = "x-foldset-bypass";
 export function createFoldsetProxy(options) {
+    // TODO rfradkin: This might cause bugs check if the api key can switch.
     if (!options.apiKey) {
         console.warn("No API key provided to Foldset proxy");
-        return async function proxy() {
+        return async function proxy(request) {
             return NextResponse.next();
         };
     }
     return async function proxy(request) {
+        // Skip proxy on upstream fetch to prevent infinite loop
+        // Use API key as value so external requests can't spoof the bypass
+        if (request.headers.get(BYPASS_HEADER) === options.apiKey) {
+            return NextResponse.next();
+        }
         const core = await getWorkerCore(options.apiKey);
-        const adapter = new ProxyAdapter(request);
+        const adapter = new NextjsAdapter(request);
         if (request.method === "POST" && request.nextUrl.pathname === "/foldset/webhooks") {
             try {
                 const result = await handleWebhookRequest(core, adapter, await request.text());
@@ -37,18 +44,25 @@ export function createFoldsetProxy(options) {
                         headers: result.response.headers,
                     });
                 case "payment-verified": {
-                    // Optimistic settlement: We settle the payment before knowing the
-                    // upstream response status. This avoids a fetch loop (middleware
-                    // fetching its own URL) and allows us to use NextResponse.next().
-                    // Trade-off: If upstream returns an error, the payment is already settled.
-                    const settlement = await handleSettlement(core, httpServer, adapter, result.paymentPayload, result.paymentRequirements, 200);
+                    const upstreamHeaders = new Headers(request.headers);
+                    upstreamHeaders.set(BYPASS_HEADER, options.apiKey);
+                    const upstream = await fetch(request.url, {
+                        method: request.method,
+                        headers: upstreamHeaders,
+                        body: request.body,
+                    });
+                    const settlement = await handleSettlement(core, httpServer, adapter, result.paymentPayload, result.paymentRequirements, upstream.status);
                     if (!settlement.success) {
                         return NextResponse.json({
                             error: "Settlement failed",
                             details: settlement.errorReason,
                         }, { status: 402 });
                     }
-                    const response = NextResponse.next();
+                    const response = new NextResponse(upstream.body, {
+                        status: upstream.status,
+                        statusText: upstream.statusText,
+                        headers: new Headers(upstream.headers),
+                    });
                     for (const [key, value] of Object.entries(settlement.headers)) {
                         response.headers.set(key, value);
                     }

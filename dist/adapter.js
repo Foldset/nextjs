@@ -1,4 +1,4 @@
-export class ProxyAdapter {
+export class NextjsAdapter {
     request;
     constructor(request) {
         this.request = request;
@@ -18,6 +18,9 @@ export class ProxyAdapter {
     }
     getUrl() {
         return this.request.url;
+    }
+    getHost() {
+        return this.request.nextUrl.hostname;
     }
     getAcceptHeader() {
         return this.request.headers.get("Accept") || "";
