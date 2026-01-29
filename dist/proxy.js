@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { handlePaymentRequest, handleSettlement, handleWebhookRequest, } from "@foldset/core";
 import { getWorkerCore } from "./core";
 import { NextjsAdapter } from "./adapter";
-const BYPASS_HEADER = "x-foldset-bypass";
 export function createFoldsetProxy(options) {
     // TODO rfradkin: This might cause bugs check if the api key can switch.
     if (!options.apiKey) {
@@ -12,11 +11,6 @@ export function createFoldsetProxy(options) {
         };
     }
     return async function proxy(request) {
-        // Skip proxy on upstream fetch to prevent infinite loop
-        // Use API key as value so external requests can't spoof the bypass
-        if (request.headers.get(BYPASS_HEADER) === options.apiKey) {
-            return NextResponse.next();
-        }
         const core = await getWorkerCore(options.apiKey);
         const adapter = new NextjsAdapter(request);
         if (request.method === "POST" && request.nextUrl.pathname === "/foldset/webhooks") {
@@ -44,25 +38,20 @@ export function createFoldsetProxy(options) {
                         headers: result.response.headers,
                     });
                 case "payment-verified": {
-                    const upstreamHeaders = new Headers(request.headers);
-                    upstreamHeaders.set(BYPASS_HEADER, options.apiKey);
-                    const upstream = await fetch(request.url, {
-                        method: request.method,
-                        headers: upstreamHeaders,
-                        body: request.body,
-                    });
-                    const settlement = await handleSettlement(core, httpServer, adapter, result.paymentPayload, result.paymentRequirements, upstream.status);
+                    // HACK: Optimistically assume the upstream will return 200 and
+                    // settle immediately. This avoids the bypass-header / re-fetch
+                    // loop but means we settle even if the upstream later errors.
+                    // This is bad — a proper fix would be offline/async settlement
+                    // with refunds on upstream failure, or a post-response hook to
+                    // settle after the real status code is known.
+                    const settlement = await handleSettlement(core, httpServer, adapter, result.paymentPayload, result.paymentRequirements, 200);
                     if (!settlement.success) {
                         return NextResponse.json({
                             error: "Settlement failed",
                             details: settlement.errorReason,
                         }, { status: 402 });
                     }
-                    const response = new NextResponse(upstream.body, {
-                        status: upstream.status,
-                        statusText: upstream.statusText,
-                        headers: new Headers(upstream.headers),
-                    });
+                    const response = NextResponse.next();
                     for (const [key, value] of Object.entries(settlement.headers)) {
                         response.headers.set(key, value);
                     }

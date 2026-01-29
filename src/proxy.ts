@@ -10,10 +10,9 @@ import type { FoldsetProxyOptions } from "./types";
 import { getWorkerCore } from "./core";
 import { NextjsAdapter } from "./adapter";
 
-const BYPASS_HEADER = "x-foldset-bypass";
-
 export function createFoldsetProxy(options: FoldsetProxyOptions) {
-  // TODO rfradkin: This might cause bugs check if the api key can switch.
+  // TODO rfradkin: This might cause bugs check if the api key can switch while the proxy is running, which it kinda can
+  // since its in a dynamo db...
   if (!options.apiKey) {
     console.warn("No API key provided to Foldset proxy");
     return async function proxy(request: NextRequest) {
@@ -21,12 +20,6 @@ export function createFoldsetProxy(options: FoldsetProxyOptions) {
     };
   }
   return async function proxy(request: NextRequest) {
-    // Skip proxy on upstream fetch to prevent infinite loop
-    // Use API key as value so external requests can't spoof the bypass
-    if (request.headers.get(BYPASS_HEADER) === options.apiKey) {
-      return NextResponse.next();
-    }
-
     const core = await getWorkerCore(options.apiKey);
     const adapter = new NextjsAdapter(request);
 
@@ -66,21 +59,20 @@ export function createFoldsetProxy(options: FoldsetProxyOptions) {
           });
 
         case "payment-verified": {
-          const upstreamHeaders = new Headers(request.headers);
-          upstreamHeaders.set(BYPASS_HEADER, options.apiKey);
-          const upstream = await fetch(request.url, {
-            method: request.method,
-            headers: upstreamHeaders,
-            body: request.body,
-          });
-
+          // TODO rfradkin:
+          // HACK: Optimistically assume the upstream will return 200 and
+          // settle immediately. This avoids the bypass-header / re-fetch
+          // loop but means we settle even if the upstream later errors.
+          // This is bad — a proper fix would be offline/async settlement
+          // with refunds on upstream failure, or a post-response hook to
+          // settle after the real status code is known.
           const settlement = await handleSettlement(
             core,
             httpServer,
             adapter,
             result.paymentPayload,
             result.paymentRequirements,
-            upstream.status,
+            200,
           );
 
           if (!settlement.success) {
@@ -93,11 +85,7 @@ export function createFoldsetProxy(options: FoldsetProxyOptions) {
             );
           }
 
-          const response = new NextResponse(upstream.body, {
-            status: upstream.status,
-            statusText: upstream.statusText,
-            headers: new Headers(upstream.headers),
-          });
+          const response = NextResponse.next();
           for (const [key, value] of Object.entries(settlement.headers)) {
             response.headers.set(key, value);
           }
