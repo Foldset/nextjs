@@ -3,7 +3,8 @@ import { handlePaymentRequest, handleSettlement, handleWebhookRequest, } from "@
 import { getWorkerCore } from "./core";
 import { NextjsAdapter } from "./adapter";
 export function createFoldsetProxy(options) {
-    // TODO rfradkin: This might cause bugs check if the api key can switch.
+    // TODO rfradkin: This might cause bugs check if the api key can switch while the proxy is running, which it kinda can
+    // since its in a dynamo db...
     if (!options.apiKey) {
         console.warn("No API key provided to Foldset proxy");
         return async function proxy(request) {
@@ -38,6 +39,7 @@ export function createFoldsetProxy(options) {
                         headers: result.response.headers,
                     });
                 case "payment-verified": {
+                    // TODO rfradkin:
                     // HACK: Optimistically assume the upstream will return 200 and
                     // settle immediately. This avoids the bypass-header / re-fetch
                     // loop but means we settle even if the upstream later errors.
