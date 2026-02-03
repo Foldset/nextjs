@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { handlePaymentRequest, handleSettlement, handleWebhookRequest, } from "@foldset/core";
+import { handlePaymentRequest, handleSettlement, } from "@foldset/core";
 import { getWorkerCore } from "./core";
 import { NextjsAdapter } from "./adapter";
 export function createFoldsetProxy(options) {
@@ -14,16 +14,6 @@ export function createFoldsetProxy(options) {
     return async function proxy(request) {
         const core = await getWorkerCore(options.apiKey);
         const adapter = new NextjsAdapter(request);
-        if (request.method === "POST" && request.nextUrl.pathname === "/foldset/webhooks") {
-            try {
-                const result = await handleWebhookRequest(core, adapter, await request.text());
-                return new NextResponse(result.body, { status: result.status });
-            }
-            catch (error) {
-                core.errorReporter.captureException(error);
-                return NextResponse.json({ error: "Failed to process webhook" }, { status: 500 });
-            }
-        }
         const httpServer = await core.httpServer.get();
         if (!httpServer) {
             return NextResponse.next();

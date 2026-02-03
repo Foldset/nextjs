@@ -1,5 +1,4 @@
 import { Redis } from "@upstash/redis";
-const REDIS_TTL = 60 * 60 * 3 + 60 * 30; // 3.5 hours
 const API_BASE_URL = "https://api.foldset.com";
 export async function fetchRedisCredentials(apiKey) {
     const response = await fetch(`${API_BASE_URL}/v1/config/redis`, {
@@ -21,9 +20,6 @@ export function createRedisStore(credentials) {
     return {
         async get(key) {
             return redis.get(`${prefix}:${key}`);
-        },
-        async put(key, value) {
-            await redis.set(`${prefix}:${key}`, value, { ex: REDIS_TTL });
         },
     };
 }

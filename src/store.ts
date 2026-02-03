@@ -1,8 +1,6 @@
 import { Redis } from "@upstash/redis";
 import type { ConfigStore } from "@foldset/core";
 
-const REDIS_TTL = 60 * 60 * 3 + 60 * 30; // 3.5 hours
-
 const API_BASE_URL = "https://api.foldset.com";
 
 export interface RedisCredentials {
@@ -39,9 +37,6 @@ export function createRedisStore(credentials: RedisCredentials): ConfigStore {
   return {
     async get(key) {
       return redis.get<string>(`${prefix}:${key}`);
-    },
-    async put(key, value) {
-      await redis.set(`${prefix}:${key}`, value, { ex: REDIS_TTL });
     },
   };
 }
