@@ -12,17 +12,20 @@ export interface RedisCredentials {
 export async function fetchRedisCredentials(
   apiKey: string,
 ): Promise<RedisCredentials> {
+  console.log("[foldset] Fetching Redis credentials from", API_BASE_URL);
   const response = await fetch(`${API_BASE_URL}/v1/config/redis`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
 
   if (!response.ok) {
+    console.error("[foldset] Failed to fetch Redis credentials:", response.status, response.statusText);
     throw new Error(
       `Failed to fetch Redis credentials: ${response.status} ${response.statusText}`,
     );
   }
 
   const { data } = (await response.json()) as { data: RedisCredentials };
+  console.log("[foldset] Redis credentials fetched, tenantId:", data.tenantId);
   return data;
 }
 
@@ -36,7 +39,10 @@ export function createRedisStore(credentials: RedisCredentials): ConfigStore {
 
   return {
     async get(key) {
-      return redis.get<string>(`${prefix}:${key}`);
+      const fullKey = `${prefix}:${key}`;
+      const value = await redis.get<string>(fullKey);
+      console.log("[foldset] Redis GET", fullKey, value ? `(${typeof value === "string" ? value.length : 0} chars)` : "(null)");
+      return value;
     },
   };
 }
