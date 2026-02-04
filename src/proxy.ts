@@ -52,12 +52,11 @@ async function handleMcpRequest(
   if (isMcpListMethod(rpc.method)) {
     console.log("[foldset] MCP list method, attaching payment requirements");
     const restrictions = await core.restrictions.get() ?? [];
-    const requirements = await getMcpListPaymentRequirements(
+    const paymentMethods = await core.paymentMethods.get() ?? [];
+    const requirements = getMcpListPaymentRequirements(
       rpc.method,
-      mcpEndpoint,
-      httpServer,
-      adapter,
       restrictions,
+      paymentMethods,
     );
 
     const response = NextResponse.next();
